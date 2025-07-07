@@ -1,17 +1,73 @@
 import { Player } from "./entities/Player";
 import { Monster } from "./entities/Monster";
 
+const MESSAGES = {
+  en: {
+    critical: "Critical hit!",
+    combo: (n) => `${n}-hit combo!`,
+    perfectCombo: "Perfect combo!",
+    defendSuccess: "Defense success!",
+    perfectDefend: "Perfect defense!",
+    monsterSpecial: "Monster's special attack!",
+    monsterCombo: (n) => `Monster's ${n}-hit combo!`,
+    escapeSuccess: "Escaped!",
+    escapeFail: "Escape failed!",
+    monsterMiss: "Monster missed!",
+    stageClear: "Stage clear!",
+    heal: (v) => `Heal: +${v}`,
+    statUp: {
+      hp: (o, n) => `Max HP: ${o} → ${n}`,
+      minAttack: (o, n) => `Min ATK: ${o} → ${n}`,
+      maxAttackMultiplier: (o, n) => `Max ATK Multiplier: ${o} → ${n}`,
+      escapeChance: (o, n) => `Escape chance: ${o}% → ${n}%`,
+      comboChance: (o, n) => `Combo chance: ${o}% → ${n}%`,
+      defenseRate: (o, n) => `Defense rate: ${o}% → ${n}%`,
+    },
+    nextStage: (n) => `Stage ${n} start!`,
+    gameOver: "Game Over!",
+  },
+  ko: {
+    critical: "치명타!",
+    combo: (n) => `${n}연속 공격!`,
+    perfectCombo: "완벽한 연계!",
+    defendSuccess: "방어 성공!",
+    perfectDefend: "완벽한 방어!",
+    monsterSpecial: "몬스터의 특수 공격!",
+    monsterCombo: (n) => `몬스터의 ${n}연속 공격!`,
+    escapeSuccess: "도망 성공!",
+    escapeFail: "도망 실패!",
+    monsterMiss: "몬스터의 공격 빗나감!",
+    stageClear: "스테이지 클리어!",
+    heal: (v) => `체력 회복: +${v}`,
+    statUp: {
+      hp: (o, n) => `최대 체력 증가: ${o} → ${n}`,
+      minAttack: (o, n) => `최소 공격력 증가: ${o} → ${n}`,
+      maxAttackMultiplier: (o, n) => `최대 공격력 배율 증가: ${o} → ${n}`,
+      escapeChance: (o, n) => `도망 확률 증가: ${o}% → ${n}%`,
+      comboChance: (o, n) => `연속 공격 확률 증가: ${o}% → ${n}%`,
+      defenseRate: (o, n) => `방어율 증가: ${o}% → ${n}%`,
+    },
+    nextStage: (n) => `스테이지 ${n} 시작!`,
+    gameOver: "게임 오버!",
+  },
+};
+
 export class GameController {
-  constructor() {
+  constructor(language = "ko") {
     this.player = new Player();
     this.monster = new Monster(this.player.stage);
     this.isGameOver = false;
     this.turnCount = 0;
+    this.language = language;
+  }
+
+  setLanguage(lang) {
+    this.language = lang;
   }
 
   performAction(action) {
     if (this.isGameOver) return { gameOver: true };
-
+    const t = MESSAGES[this.language];
     this.turnCount++;
 
     let result = {
@@ -30,7 +86,7 @@ export class GameController {
         const attackResult = this.player.attack();
         result.playerDamage = attackResult.damage;
         if (attackResult.critical) {
-          result.specialEffects.push("치명타!");
+          result.specialEffects.push(t.critical);
         }
         this.handleMonsterDamage(result);
         break;
@@ -38,9 +94,9 @@ export class GameController {
       case "combo":
         const comboDamages = this.player.comboAttack();
         result.playerDamage = comboDamages.reduce((a, b) => a + b, 0);
-        result.specialEffects.push(`${comboDamages.length}연속 공격!`);
+        result.specialEffects.push(t.combo(comboDamages.length));
         if (comboDamages.length > 2) {
-          result.specialEffects.push("완벽한 연계!");
+          result.specialEffects.push(t.perfectCombo);
         }
         this.handleMonsterDamage(result);
         break;
@@ -51,19 +107,19 @@ export class GameController {
 
         if (defenseResult.success) {
           result.playerDamage = defenseResult.counterDamage;
-          result.specialEffects.push("방어 성공!");
+          result.specialEffects.push(t.defendSuccess);
           if (defenseResult.perfect) {
-            result.specialEffects.push("완벽한 방어!");
+            result.specialEffects.push(t.perfectDefend);
           }
           this.handleMonsterDamage(result);
         } else {
           result.monsterDamage = monsterAttack.damage;
           if (monsterAttack.type === "special") {
-            result.specialEffects.push("몬스터의 특수 공격!");
+            result.specialEffects.push(t.monsterSpecial);
           }
           if (monsterAttack.consecutive > 1) {
             result.specialEffects.push(
-              `몬스터의 ${monsterAttack.consecutive}연속 공격!`
+              t.monsterCombo(monsterAttack.consecutive)
             );
           }
         }
@@ -73,11 +129,11 @@ export class GameController {
         if (this.player.tryEscape()) {
           result.escaped = true;
           result.stageCleared = true;
-          result.specialEffects.push("도망 성공!");
+          result.specialEffects.push(t.escapeSuccess);
         } else {
           const monsterAttack = this.monster.attackPlayer();
           result.monsterDamage = monsterAttack.damage;
-          result.specialEffects.push("도망 실패!");
+          result.specialEffects.push(t.escapeFail);
           this.player.hp -= result.monsterDamage;
         }
         break;
@@ -88,10 +144,10 @@ export class GameController {
       const monsterAttack = this.monster.attackPlayer();
       result.monsterDamage = monsterAttack.damage;
       if (monsterAttack.type === "special") {
-        result.specialEffects.push("몬스터의 특수 공격!");
+        result.specialEffects.push(t.monsterSpecial);
       }
       if (monsterAttack.type === "miss") {
-        result.specialEffects.push("몬스터의 공격 빗나감!");
+        result.specialEffects.push(t.monsterMiss);
       }
       this.player.hp -= result.monsterDamage;
     }
@@ -100,14 +156,15 @@ export class GameController {
     if (this.player.hp <= 0) {
       this.isGameOver = true;
       result.gameOver = true;
+      result.specialEffects.push(t.gameOver);
       return result;
     }
 
     // 스테이지 클리어 체크
     if (this.monster.hp <= 0) {
       result.stageCleared = true;
-      result.specialEffects.push("스테이지 클리어!");
-      this.handleStageCleared(result);
+      result.specialEffects.push(t.stageClear);
+      this.handleStageCleared(result, t);
     }
 
     return result;
@@ -120,11 +177,11 @@ export class GameController {
     }
   }
 
-  handleStageCleared(result) {
+  handleStageCleared(result, t) {
     // 체력 회복 (현재 최대 체력의 30%)
     const healAmount = Math.floor(this.player.maxHp * 0.3);
     this.player.heal(healAmount);
-    result.specialEffects.push(`체력 회복: +${healAmount}`);
+    result.specialEffects.push(t.heal(healAmount));
 
     // 랜덤 스탯 강화
     const stats = [
@@ -143,44 +200,13 @@ export class GameController {
     this.player.upgradeStats(randomStat);
 
     // 어떤 스탯이 얼마나 증가했는지 표시
-    switch (randomStat) {
-      case "hp":
-        result.specialEffects.push(
-          `최대 체력 증가: ${oldStats.maxHp} → ${this.player.maxHp}`
-        );
-        break;
-      case "minAttack":
-        result.specialEffects.push(
-          `최소 공격력 증가: ${oldStats.minAttack} → ${this.player.minAttack}`
-        );
-        break;
-      case "maxAttackMultiplier":
-        result.specialEffects.push(
-          `최대 공격력 배율 증가: ${oldStats.maxAttackMultiplier.toFixed(
-            1
-          )} → ${this.player.maxAttackMultiplier.toFixed(1)}`
-        );
-        break;
-      case "escapeChance":
-        result.specialEffects.push(
-          `도망 확률 증가: ${oldStats.escapeChance}% → ${this.player.escapeChance}%`
-        );
-        break;
-      case "comboChance":
-        result.specialEffects.push(
-          `연속 공격 확률 증가: ${oldStats.comboChance}% → ${this.player.comboChance}%`
-        );
-        break;
-      case "defenseRate":
-        result.specialEffects.push(
-          `방어율 증가: ${oldStats.defenseRate}% → ${this.player.defenseRate}%`
-        );
-        break;
-    }
+    result.specialEffects.push(
+      t.statUp[randomStat](oldStats[randomStat], this.player[randomStat])
+    );
 
     // 다음 스테이지로 진행
     this.player.stage++;
     this.monster = new Monster(this.player.stage);
-    result.specialEffects.push(`스테이지 ${this.player.stage} 시작!`);
+    result.specialEffects.push(t.nextStage(this.player.stage));
   }
 }
