@@ -8,6 +8,9 @@ export class Player {
     this.comboChance = 20; // 20%
     this.defenseRate = 30; // 30%
     this.stage = 1;
+    this.consecutiveDefends = 0; // 연속 방어 횟수
+    this.comboStreak = 0; // 연속 공격 성공 횟수
+    this.lastAction = null; // 마지막 행동
   }
 
   get maxAttack() {
@@ -22,32 +25,78 @@ export class Player {
   }
 
   attack() {
-    return this.calculateDamage();
+    this.comboStreak = 0;
+    this.consecutiveDefends = 0;
+    this.lastAction = "attack";
+    const damage = this.calculateDamage();
+    // 10% 확률로 치명타
+    if (Math.random() < 0.1) {
+      return {
+        damage: Math.floor(damage * 1.5),
+        critical: true,
+      };
+    }
+    return {
+      damage,
+      critical: false,
+    };
   }
 
   comboAttack() {
-    if (Math.random() * 100 < this.comboChance) {
-      return [this.calculateDamage(), this.calculateDamage()];
+    const baseChance = this.comboChance;
+    // 이전에도 연속공격을 했다면 확률 증가
+    const bonusChance = this.lastAction === "combo" ? this.comboStreak * 5 : 0;
+
+    if (Math.random() * 100 < baseChance + bonusChance) {
+      this.comboStreak++;
+      this.lastAction = "combo";
+      // 연속공격 성공 스트릭에 따라 2~3번 공격
+      const attacks = new Array(this.comboStreak > 2 ? 3 : 2)
+        .fill(0)
+        .map(() => this.calculateDamage());
+      return attacks;
     }
+
+    this.comboStreak = 0;
+    this.lastAction = "combo";
     return [this.calculateDamage()];
   }
 
   defend(incomingDamage) {
-    if (Math.random() * 100 < this.defenseRate) {
+    const baseDefenseRate = this.defenseRate;
+    // 연속으로 방어할수록 방어 확률 감소
+    const actualDefenseRate = baseDefenseRate - this.consecutiveDefends * 5;
+
+    if (Math.random() * 100 < actualDefenseRate) {
+      this.consecutiveDefends++;
+      this.lastAction = "defend";
+
+      // 연속 방어 성공시 반격 데미지 증가
+      const counterMultiplier = 0.6 + this.consecutiveDefends * 0.1;
       return {
         success: true,
-        counterDamage: Math.floor(this.calculateDamage() * 0.6),
+        counterDamage: Math.floor(this.calculateDamage() * counterMultiplier),
+        perfect: this.consecutiveDefends > 2,
       };
     }
+
     this.hp -= incomingDamage;
+    this.consecutiveDefends = 0;
+    this.lastAction = "defend";
     return {
       success: false,
       counterDamage: 0,
+      perfect: false,
     };
   }
 
   tryEscape() {
-    return Math.random() * 100 < this.escapeChance;
+    const baseEscapeChance = this.escapeChance;
+    // HP가 낮을수록 도망 확률 증가
+    const hpRatio = this.hp / this.maxHp;
+    const bonusEscapeChance = (1 - hpRatio) * 20;
+
+    return Math.random() * 100 < baseEscapeChance + bonusEscapeChance;
   }
 
   heal(amount) {
