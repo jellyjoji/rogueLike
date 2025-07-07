@@ -10,7 +10,7 @@ const UI_TEXT = {
     player: "플레이어",
     monster: "몬스터",
     stage: "스테이지",
-    hp: "HP",
+    hp: "체력",
     attack: "공격력",
     comboChance: "연속공격 확률",
     defenseRate: "방어율",
@@ -68,18 +68,32 @@ export default function Home() {
       setGame(new GameController(language));
     } else {
       if (result.escaped) {
-        message = t.escapeSuccess;
+        message = `🏃‍♂️ ${t.escapeSuccess}`;
       } else {
-        message = t.playerAttack(result.playerDamage) + "\n";
+        message = `🗡️ ${t.playerAttack(result.playerDamage)}\n`;
         if (result.monsterDamage > 0) {
-          message += t.monsterAttack(result.monsterDamage) + "\n";
+          message += `🗡️ ${t.monsterAttack(result.monsterDamage)}\n`;
         }
         if (result.stageCleared) {
           message += t.stageClear;
         }
       }
       if (result.specialEffects && result.specialEffects.length > 0) {
-        message += "\n" + result.specialEffects.join("\n");
+        // 이모지 자동 부여
+        const effectWithEmoji = result.specialEffects.map((txt) => {
+          if (txt.includes("방어") || txt.toLowerCase().includes("defense"))
+            return `🛡️ ${txt}`;
+          if (txt.includes("도망") || txt.toLowerCase().includes("escape"))
+            return `🏃‍♂️ ${txt}`;
+          if (
+            txt.includes("공격") ||
+            txt.toLowerCase().includes("attack") ||
+            txt.toLowerCase().includes("combo")
+          )
+            return `🗡️ ${txt}`;
+          return txt;
+        });
+        message += "\n" + effectWithEmoji.join("\n");
       }
     }
     setGameState({
@@ -135,7 +149,9 @@ export default function Home() {
             </p>
           </div>
           <div className={styles.monsterStats}>
-            <h2>{t.monster}</h2>
+            <h2>
+              {t.monster} {game.monster.hp < 50 ? "😺" : "🐲"}
+            </h2>
             <p>
               {t.hp}: {game.monster.hp}
             </p>
