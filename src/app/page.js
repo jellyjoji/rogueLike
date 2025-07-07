@@ -55,7 +55,13 @@ export default function Home() {
   const t = UI_TEXT[language];
 
   useEffect(() => {
-    setGame(new GameController(language));
+    if (game) {
+      game.setLanguage(language);
+      setGame(game); // 강제 리렌더링
+    } else {
+      setGame(new GameController(language));
+    }
+    // eslint-disable-next-line
   }, [language]);
 
   const handleAction = (action) => {
